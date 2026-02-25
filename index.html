@@ -11,6 +11,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -237,6 +238,10 @@
             color: #00d4ff;
         }
 
+        .ctrl-btn:active {
+            transform: scale(0.92);
+        }
+
         /* Mode Panel */
         .mode-panel {
             bottom: 16px;
@@ -326,6 +331,10 @@
             background: rgba(0, 212, 255, 0.05);
         }
 
+        .mode-btn:active {
+            transform: scale(0.95);
+        }
+
         .mode-btn.active {
             border-color: #00d4ff;
             background: rgba(0, 212, 255, 0.1);
@@ -408,6 +417,11 @@
         .action-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 4px 16px rgba(0, 212, 255, 0.2);
+        }
+
+        .action-btn:active:not(:disabled) {
+            transform: translateY(0) scale(0.97);
+            box-shadow: none;
         }
 
         .action-btn:disabled {
@@ -742,15 +756,241 @@
             display: none;
         }
 
+        /* ===== Tablet & large phone ===== */
         @media (max-width: 768px) {
+            /* Question panel – full width, compact */
             .question-panel {
                 min-width: auto;
-                width: calc(100% - 20px);
-                padding: 12px 16px;
+                width: calc(100% - 16px);
+                padding: 10px 14px;
+                top: 8px;
+                max-width: none;
+                border-radius: 12px;
             }
             .q-text { font-size: 1.05em; }
-            .stats-panel { top: auto; bottom: 65px; left: 8px; padding: 10px; }
-            .info-card { bottom: 80px; padding: 16px; }
+            .q-badge { font-size: 0.68em; padding: 3px 10px; }
+
+            /* Stats – horizontal compact bar below question */
+            .stats-panel {
+                top: auto;
+                bottom: 60px;
+                left: 8px;
+                right: auto;
+                padding: 8px 10px;
+                min-width: auto;
+                border-radius: 10px;
+            }
+            .stats-title { font-size: 0.6em; margin-bottom: 6px; }
+            .stats-grid { gap: 4px; }
+            .stat-val { font-size: 1.15em; }
+            .stat-lbl { font-size: 0.52em; }
+            .stat-box { padding: 4px; }
+            .progress-wrap { margin-top: 6px; }
+
+            /* Controls – bigger touch targets, keep top-right */
+            .controls-panel {
+                top: 8px;
+                right: 8px;
+                padding: 6px;
+                gap: 4px;
+                border-radius: 10px;
+            }
+            .ctrl-btn {
+                width: 42px;
+                height: 42px;
+                font-size: 1.05em;
+                border-radius: 8px;
+            }
+
+            /* Mode panel – narrower, collapsed by default handled in JS */
+            .mode-panel {
+                bottom: 8px;
+                left: 8px;
+                padding: 10px;
+                max-width: 260px;
+                border-radius: 12px;
+            }
+            .mode-header h3 { font-size: 0.68em; }
+            .mode-btn { padding: 8px 4px; }
+            .mode-btn .icon { font-size: 1.1em; }
+            .mode-btn .label { font-size: 0.58em; }
+            .mode-tab { padding: 7px; font-size: 0.72em; }
+            .region-select { padding: 7px 10px; font-size: 0.78em; }
+
+            /* Action panel – horizontal at bottom-right */
+            .action-panel {
+                bottom: 8px;
+                right: 8px;
+                padding: 8px;
+                gap: 6px;
+                border-radius: 12px;
+            }
+            .action-btn {
+                padding: 10px 16px;
+                font-size: 0.8em;
+                min-height: 42px;
+            }
+
+            /* Info card */
+            .info-card {
+                bottom: 70px;
+                padding: 16px 20px;
+                max-width: 360px;
+                border-radius: 14px;
+            }
+            .info-card-title { font-size: 1.15em; }
+
+            /* Result popup */
+            .result-popup {
+                min-width: auto;
+                width: calc(100% - 32px);
+                max-width: 380px;
+                padding: 24px 20px;
+                border-radius: 16px;
+            }
+            .result-popup h2 { font-size: 1.2em; }
+            .result-popup .emoji { font-size: 2.4em; margin: 8px 0; }
+            .result-popup .big-score { font-size: 2.2em; }
+
+            /* Feedback toast */
+            .feedback-toast { top: 80px; padding: 10px 20px; font-size: 0.9em; }
+
+            /* Streak badge */
+            .streak-badge { top: 70px; right: 8px; font-size: 0.8em; padding: 6px 12px; }
+        }
+
+        /* ===== Small phone ===== */
+        @media (max-width: 480px) {
+            .question-panel {
+                width: calc(100% - 12px);
+                padding: 8px 12px;
+                top: 6px;
+                border-radius: 10px;
+            }
+            .q-text { font-size: 0.95em; line-height: 1.35; }
+            .q-header { gap: 6px; margin-bottom: 4px; }
+            .q-badge { font-size: 0.62em; padding: 2px 8px; border-radius: 8px; }
+            .q-text .flag-big { font-size: 2.2em; margin: 4px 0; }
+            .hint-box { padding: 8px 10px; font-size: 0.82em; margin-top: 6px; }
+            .mnemonic-box { padding: 8px 12px; margin-top: 6px; }
+            .mnemonic-title { font-size: 0.62em; }
+            .mnemonic-text { font-size: 0.82em; }
+
+            /* Stats – very compact */
+            .stats-panel {
+                bottom: 54px;
+                left: 6px;
+                padding: 6px 8px;
+                border-radius: 8px;
+            }
+            .stats-title { font-size: 0.55em; margin-bottom: 4px; }
+            .stat-val { font-size: 1em; }
+            .stat-lbl { font-size: 0.48em; }
+            .stat-box { padding: 3px; border-radius: 6px; }
+            .stats-grid { gap: 3px; }
+            .progress-txt { font-size: 0.6em; }
+
+            /* Controls – compact row */
+            .controls-panel {
+                top: 6px;
+                right: 6px;
+                padding: 4px;
+                gap: 3px;
+                border-radius: 8px;
+            }
+            .ctrl-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 0.9em;
+                border-radius: 7px;
+            }
+
+            /* Mode panel – full width bottom sheet */
+            .mode-panel {
+                bottom: 6px;
+                left: 6px;
+                right: auto;
+                padding: 8px;
+                max-width: 220px;
+                border-radius: 10px;
+            }
+            .mode-header h3 { font-size: 0.62em; }
+            .mode-grid { gap: 4px; }
+            .mode-btn { padding: 6px 3px; border-radius: 6px; }
+            .mode-btn .icon { font-size: 1em; }
+            .mode-btn .label { font-size: 0.52em; }
+            .mode-tab { padding: 6px; font-size: 0.68em; border-radius: 5px; }
+            .mode-tabs { padding: 3px; border-radius: 6px; margin-bottom: 6px; }
+            .region-select { padding: 6px 8px; font-size: 0.75em; border-radius: 6px; }
+            .collapse-btn { width: 20px; height: 20px; font-size: 0.6em; }
+
+            /* Action panel – compact */
+            .action-panel {
+                bottom: 6px;
+                right: 6px;
+                padding: 6px;
+                gap: 5px;
+                border-radius: 10px;
+            }
+            .action-btn {
+                padding: 9px 14px;
+                font-size: 0.75em;
+                border-radius: 8px;
+                min-height: 38px;
+                gap: 4px;
+            }
+
+            /* Info card */
+            .info-card {
+                bottom: 60px;
+                padding: 14px 16px;
+                max-width: calc(100% - 24px);
+                border-radius: 12px;
+            }
+            .info-card-title { font-size: 1.05em; margin-bottom: 4px; }
+            .info-card-subtitle { font-size: 0.75em; margin-bottom: 6px; }
+            .info-fact { font-size: 0.8em; gap: 8px; }
+            .info-card-nav { gap: 6px; margin-top: 10px; }
+            .info-card-nav button { padding: 8px; font-size: 0.75em; border-radius: 6px; }
+            .info-mnemonic { padding: 8px 10px; margin-top: 8px; }
+            .info-mnemonic-title { font-size: 0.6em; }
+            .info-mnemonic-text { font-size: 0.8em; }
+
+            /* Result popup */
+            .result-popup {
+                width: calc(100% - 24px);
+                padding: 20px 16px;
+                border-radius: 14px;
+            }
+            .result-popup h2 { font-size: 1.1em; }
+            .result-popup .emoji { font-size: 2em; margin: 6px 0; }
+            .result-popup .big-score { font-size: 1.9em; }
+            .result-popup .msg { font-size: 0.85em; margin: 4px 0 12px; }
+            .result-breakdown { padding: 8px; gap: 6px; border-radius: 8px; }
+            .bd-val { font-size: 1.1em; }
+            .bd-lbl { font-size: 0.52em; }
+            .weak-areas { padding: 8px; margin-top: 8px; }
+            .weak-title { font-size: 0.65em; }
+            .weak-item { font-size: 0.75em; }
+
+            /* Feedback & streak */
+            .feedback-toast { top: 60px; padding: 8px 16px; font-size: 0.82em; border-radius: 8px; }
+            .streak-badge { top: 56px; right: 6px; font-size: 0.75em; padding: 5px 10px; border-radius: 14px; }
+        }
+
+        /* ===== Safe area for notched devices ===== */
+        @supports (padding: env(safe-area-inset-bottom)) {
+            @media (max-width: 768px) {
+                .mode-panel { bottom: calc(8px + env(safe-area-inset-bottom)); }
+                .action-panel { bottom: calc(8px + env(safe-area-inset-bottom)); }
+                .stats-panel { bottom: calc(60px + env(safe-area-inset-bottom)); }
+            }
+        }
+
+        /* ===== Dynamic viewport units for mobile address bar ===== */
+        @supports (height: 100dvh) {
+            body { min-height: 100dvh; }
+            #map { height: 100dvh; }
         }
     </style>
 </head>
@@ -1070,6 +1310,12 @@
 
         // ========== MAP INIT ==========
         async function initMap() {
+            // Auto-collapse mode panel on mobile for more map visibility
+            if (window.innerWidth <= 768) {
+                document.getElementById('modePanel').classList.add('collapsed');
+                document.getElementById('collapseBtn').textContent = '▶';
+            }
+
             updateLoad(5, "Starte...");
 
             map = L.map('map', {
