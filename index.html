@@ -18,7 +18,6 @@
             font-family: 'Segoe UI', system-ui, sans-serif;
             background: #080810;
             min-height: 100vh;
-            min-height: 100dvh;
             color: white;
             overflow: hidden;
         }
@@ -26,7 +25,6 @@
         #map {
             width: 100vw;
             height: 100vh;
-            height: 100dvh;
             position: absolute;
             top: 0;
             left: 0;
@@ -988,6 +986,12 @@
                 .stats-panel { bottom: calc(60px + env(safe-area-inset-bottom)); }
             }
         }
+
+        /* ===== Dynamic viewport units for mobile address bar ===== */
+        @supports (height: 100dvh) {
+            body { min-height: 100dvh; }
+            #map { height: 100dvh; }
+        }
     </style>
 </head>
 <body>
@@ -1306,6 +1310,12 @@
 
         // ========== MAP INIT ==========
         async function initMap() {
+            // Auto-collapse mode panel on mobile for more map visibility
+            if (window.innerWidth <= 768) {
+                document.getElementById('modePanel').classList.add('collapsed');
+                document.getElementById('collapseBtn').textContent = '▶';
+            }
+
             updateLoad(5, "Starte...");
 
             map = L.map('map', {
@@ -1971,15 +1981,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', initMap);
-
-        // Auto-collapse mode panel on mobile for more map visibility
-        if (window.innerWidth <= 768) {
-            document.addEventListener('DOMContentLoaded', function() {
-                const p = document.getElementById('modePanel');
-                p.classList.add('collapsed');
-                document.getElementById('collapseBtn').textContent = '▶';
-            });
-        }
 
         document.addEventListener('keydown', function(e) {
             if (learnActive) {
