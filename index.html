@@ -917,6 +917,12 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // ========== DATA SOURCES ==========
+        // Country data:  REST Countries API (https://restcountries.com) - Open Source
+        // Country borders: datasets/geo-countries (GitHub) - Open Data
+        // Rivers:         Natural Earth (naturalearthdata.com) - Public Domain
+        // Mountains:      Custom dataset (coordinates + metadata)
+
         // ========== GLOBALS ==========
         let map, countriesLayer, riversLayer, mountainsLayer;
         let showRiversFlag = true, showMountainsFlag = true;
@@ -929,8 +935,73 @@
         let learnItems = [], learnIndex = 0;
         let allRivers = []; // Store all river layers for easy access
 
-        // ========== COUNTRIES ==========
-        const countriesDB = {
+        // ========== MNEMONICS (custom German learning aids) ==========
+        const mnemonicsDB = {
+            "DEU": "Berlin beginnt mit B wie Bier!",
+            "FRA": "Paris = Eiffelturm, Frankreich wie ein Sechseck",
+            "ESP": "Madrid in der Mitte, Spanien wie ein Stierkopf",
+            "ITA": "Italien = Stiefel der nach Sizilien kickt!",
+            "PRT": "Portal zum Atlantik - ganz am Rand",
+            "NLD": "NIEDERlande = NIEDRIG, unter dem Meer",
+            "BEL": "Brüssel = Schokolade, klein zwischen Großen",
+            "AUT": "Wien = Wiener Schnitzel, östlich der Schweiz",
+            "CHE": "Schweiz = neutral wie Käse mit Löchern",
+            "POL": "Polen = flach, östlich von Deutschland",
+            "GRC": "Athen = Antike! Viele Finger ins Meer",
+            "SWE": "Stockholm auf Inseln, Schweden lang wie Ski",
+            "NOR": "NORwegen = NORd-Weg mit Fjorden",
+            "FIN": "FINNland = 1000 Seen",
+            "DNK": "Dänemark = Brücke nach Skandinavien",
+            "GBR": "London an der Themse",
+            "IRL": "Grüne Insel - Dublin",
+            "ROU": "Rumänien = Dracula in den Karpaten",
+            "UKR": "Ukraine = größtes Land ganz in Europa",
+            "CZE": "Prag = prächtig! Tschechien wie ein Hut",
+            "HUN": "Budapest = Buda + Pest an der Donau",
+            "CHN": "China wie ein Hahn auf der Karte",
+            "JPN": "Japan = aufgehende Sonne, Inseln wie Drache",
+            "KOR": "Seoul = Soul, Halbinsel zeigt nach Japan",
+            "IND": "Indien = Dreieck das ins Meer taucht",
+            "THA": "Thailand = Elefantenkopf mit Rüssel!",
+            "VNM": "Vietnam lang und dünn wie ein S",
+            "IDN": "Indonesien = 17.000 Inseln wie Perlen",
+            "TUR": "Türkei = Brücke Europa-Asien",
+            "SAU": "Saudi-Arabien = fast ganze arab. Halbinsel",
+            "IRN": "Iran = Persien, zwischen Irak und Afghanistan",
+            "EGY": "Ägypten = Pyramiden am Nil!",
+            "ZAF": "Südafrika = Südspitze mit 3 Hauptstädten",
+            "MAR": "Marokko = NW-Ecke, 14km von Spanien",
+            "KEN": "Kenia am Äquator - Safari!",
+            "NGA": "Nigeria = bevölkerungsreichstes Land Afrikas",
+            "ETH": "Äthiopien = nie kolonisiert!",
+            "DZA": "Algerien = größtes Land Afrikas",
+            "USA": "D.C. an der Ostküste, nicht Staat Washington!",
+            "CAN": "Kanada = zweitgrößtes Land der Welt",
+            "MEX": "Mexiko-Stadt im Hochtal",
+            "CUB": "Kuba = größte Karibikinsel wie Krokodil",
+            "BRA": "Brasilien = größtes Land Südamerikas",
+            "ARG": "Buenos Aires = Gute Lüfte",
+            "CHL": "Chile = lang und schmal wie Chili!",
+            "PER": "Peru = Machu Picchu!",
+            "COL": "Kolumbien an zwei Ozeanen",
+            "AUS": "Canberra zwischen Sydney und Melbourne",
+            "NZL": "Neuseeland = zwei Inseln"
+        };
+
+        // German translations for capital names that differ from English
+        const capitalDE = {
+            "Rome": "Rom", "Lisbon": "Lissabon", "Brussels": "Brüssel",
+            "Vienna": "Wien", "Warsaw": "Warschau", "Athens": "Athen",
+            "Copenhagen": "Kopenhagen", "Bucharest": "Bukarest", "Kyiv": "Kiew",
+            "Prague": "Prag", "Beijing": "Peking", "Tokyo": "Tokio",
+            "New Delhi": "Neu-Delhi", "Riyadh": "Riad", "Tehran": "Teheran",
+            "Cairo": "Kairo", "Addis Ababa": "Addis Abeba", "Algiers": "Algier",
+            "Washington, D.C.": "Washington D.C.", "Mexico City": "Mexiko-Stadt",
+            "Havana": "Havanna"
+        };
+
+        // ========== COUNTRIES (fallback data, overwritten by API) ==========
+        let countriesDB = {
             europe: [
                 { name: "Deutschland", capital: "Berlin", code: "DEU", flag: "🇩🇪", mnemonic: "Berlin beginnt mit B wie Bier!" },
                 { name: "Frankreich", capital: "Paris", code: "FRA", flag: "🇫🇷", mnemonic: "Paris = Eiffelturm, Frankreich wie ein Sechseck" },
@@ -1045,7 +1116,7 @@
             { name: "Apennin", hint: "Rückgrat Italiens", mnemonic: "APENNIN = WIRBELSÄULE des Stiefels", peak: "Corno Grande 2912m", coords: [[[44.5,8],[43.5,11.5],[40,16],[40.5,15.5],[43,12],[44.5,8]]] }
         ];
 
-        const nameMapping = {
+        let nameMapping = {
             "Germany": "Deutschland", "France": "Frankreich", "Spain": "Spanien",
             "Italy": "Italien", "Portugal": "Portugal", "Netherlands": "Niederlande",
             "Belgium": "Belgien", "Austria": "Österreich", "Switzerland": "Schweiz",
@@ -1068,9 +1139,68 @@
             "Australia": "Australien", "New Zealand": "Neuseeland"
         };
 
+        // ========== OPEN SOURCE DATA: REST Countries API ==========
+        async function fetchCountriesFromAPI() {
+            try {
+                const res = await fetch('https://restcountries.com/v3.1/all?fields=name,translations,capital,cca3,flag,region,subregion');
+                if (!res.ok) throw new Error('API response: ' + res.status);
+                const data = await res.json();
+
+                const newDB = {};
+                // Start with existing nameMapping as base for GeoJSON name variants
+                const newMapping = { ...nameMapping };
+
+                for (const c of data) {
+                    const code = c.cca3;
+                    const germanName = c.translations?.deu?.common || c.name.common;
+                    const englishName = c.name.common;
+                    const rawCapital = c.capital?.[0] || '';
+                    const capital = capitalDE[rawCapital] || rawCapital;
+                    const flag = c.flag || '';
+
+                    // Add to nameMapping for all countries (English → German)
+                    newMapping[englishName] = germanName;
+                    if (c.name.official) newMapping[c.name.official] = germanName;
+
+                    // Only add to quiz DB if we have a mnemonic (curated countries)
+                    if (!mnemonicsDB[code]) continue;
+
+                    let region;
+                    switch (c.region) {
+                        case 'Europe': region = 'europe'; break;
+                        case 'Asia': region = 'asia'; break;
+                        case 'Africa': region = 'africa'; break;
+                        case 'Oceania': region = 'oceania'; break;
+                        case 'Americas':
+                            region = c.subregion === 'South America' ? 'southAmerica' : 'northAmerica';
+                            break;
+                        default: continue;
+                    }
+
+                    if (!newDB[region]) newDB[region] = [];
+                    newDB[region].push({
+                        name: germanName,
+                        capital: capital,
+                        code: code,
+                        flag: flag,
+                        mnemonic: mnemonicsDB[code]
+                    });
+                }
+
+                countriesDB = newDB;
+                nameMapping = newMapping;
+            } catch (e) {
+                console.warn('REST Countries API unavailable, using fallback data:', e.message);
+            }
+        }
+
         // ========== MAP INIT ==========
         async function initMap() {
             updateLoad(5, "Starte...");
+
+            // Fetch country data from open source REST Countries API
+            updateLoad(8, "Länderdaten (API)...");
+            await fetchCountriesFromAPI();
 
             map = L.map('map', {
                 center: [25, 0], zoom: 2, minZoom: 2, maxZoom: 10,
