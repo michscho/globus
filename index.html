@@ -1398,7 +1398,7 @@
             } else if (currentQuestion.code) {
                 countriesLayer.eachLayer(l => {
                     const lCode = l.feature.properties['ISO3166-1-Alpha-3'];
-                    const lName = nameMapping[l.feature.properties.name];
+                    const lName = nameMapping[l.feature.properties.name] || l.feature.properties.name;
                     if (lCode === currentQuestion.code || (lName && lName === currentQuestion.answer)) {
                         l.setStyle({ fillColor: '#00d4ff', weight: 3, color: '#00d4ff', fillOpacity: 0.7 });
                         highlighted.push(l);
@@ -1598,7 +1598,7 @@
 
         function showCountryLearn(layer) {
             const code = layer.feature.properties['ISO3166-1-Alpha-3'];
-            const gName = nameMapping[layer.feature.properties.name];
+            const gName = nameMapping[layer.feature.properties.name] || layer.feature.properties.name;
             let c = null;
             for (const region of Object.values(countriesDB)) {
                 c = region.find(x => x.code === code || x.name === gName);
