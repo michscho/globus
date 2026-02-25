@@ -1147,11 +1147,13 @@
                 const data = await res.json();
 
                 const newDB = {};
-                // Start with existing nameMapping as base for GeoJSON name variants
+                // Merge with existing nameMapping to preserve GeoJSON name variants
+                // (e.g., GeoJSON uses "Turkey" while API uses "Türkiye")
                 const newMapping = { ...nameMapping };
 
                 for (const c of data) {
                     const code = c.cca3;
+                    if (!code || !c.name) continue; // Skip malformed entries
                     const germanName = c.translations?.deu?.common || c.name.common;
                     const englishName = c.name.common;
                     const rawCapital = c.capital?.[0] || '';
@@ -1162,7 +1164,8 @@
                     newMapping[englishName] = germanName;
                     if (c.name.official) newMapping[c.name.official] = germanName;
 
-                    // Only add to quiz DB if we have a mnemonic (curated countries)
+                    // Only include curated countries (with mnemonics) in the quiz database;
+                    // other countries still get added to nameMapping for map click recognition
                     if (!mnemonicsDB[code]) continue;
 
                     let region;
