@@ -10,11 +10,65 @@
         let currentMode = 'countries', currentRegion = 'world', currentTab = 'quiz';
         let quizActive = false, learnActive = false;
         let currentQuestion = null;
+        let questionLocked = false;
         let qIndex = 0, totalQ = 10;
         let score = 0, streak = 0, correct = 0, wrong = 0, hints = 0;
         let used = [], highlighted = [], wrongAnswers = [];
         let learnItems = [], learnIndex = 0;
         let allRivers = []; // Store all river layers for easy access
+        let mapInitialized = false;
+        let answerTimer = null;
+
+        const $ = (id) => document.getElementById(id);
+
+        function setHidden(el, hidden) {
+            if (!el) return;
+            el.classList.toggle('hidden', hidden);
+        }
+
+        function setQuestionText(parts) {
+            const qText = $('qText');
+            qText.replaceChildren();
+
+            parts.forEach(part => {
+                if (typeof part === 'string') {
+                    qText.append(document.createTextNode(part));
+                    return;
+                }
+
+                const span = document.createElement('span');
+                span.className = part.className || '';
+                span.textContent = part.text || '';
+                qText.append(span);
+            });
+        }
+
+        function setInfoFacts(facts) {
+            const container = $('infoFacts');
+            container.replaceChildren();
+            facts.forEach(({ icon, text }) => {
+                const row = document.createElement('div');
+                row.className = 'info-fact';
+
+                const iconEl = document.createElement('span');
+                iconEl.className = 'info-fact-icon';
+                iconEl.textContent = icon;
+
+                row.append(iconEl, document.createTextNode(text));
+                container.append(row);
+            });
+        }
+
+        function setLoadingError(message) {
+            $('loadingStatus').textContent = message;
+            $('loadingOverlay').classList.add('load-error');
+        }
+
+        function syncLearnMnemonicVisibility() {
+            const box = document.querySelector('.info-mnemonic');
+            if (!box) return;
+            setHidden(box, !$('optShowMnemonic').checked);
+        }
 
         // ========== MNEMONICS (custom German learning aids) ==========
         const mnemonicsDB = {
@@ -280,55 +334,73 @@
 
         // ========== MAP INIT ==========
         async function initMap() {
-            // Auto-collapse mode panel on mobile for more map visibility
-            if (window.innerWidth <= 768) {
-                document.getElementById('modePanel').classList.add('collapsed');
-                document.getElementById('collapseBtn').textContent = '▶';
+            if (mapInitialized) return;
+            $('loadingOverlay').classList.remove('hidden', 'load-error');
+
+            try {
+                // Auto-collapse mode panel on mobile for more map visibility
+                if (window.innerWidth <= 768) {
+                    $('modePanel').classList.add('collapsed');
+                    $('collapseBtn').textContent = '▶';
+                    $('modeHeader').setAttribute('aria-expanded', 'false');
+                }
+
+                updateLoad(5, "Starte...");
+
+                // Fetch country data from open source REST Countries API
+                updateLoad(8, "Länderdaten (API)...");
+                await fetchCountriesFromAPI();
+
+                map = L.map('map', {
+                    center: [25, 0], zoom: 2, minZoom: 2, maxZoom: 10,
+                    worldCopyJump: true, zoomControl: false
+                });
+
+                updateLoad(15, "Basiskarte...");
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+                    attribution: '©OSM ©CartoDB'
+                }).addTo(map);
+
+                updateLoad(30, "Länder laden...");
+                await loadCountries();
+
+                updateLoad(55, "Flüsse laden...");
+                await loadRivers();
+
+                updateLoad(80, "Gebirge laden...");
+                loadMountains();
+
+                updateLoad(100, "Fertig!");
+                mapInitialized = true;
+                setTimeout(() => $('loadingOverlay').classList.add('hidden'), 300);
+            } catch (e) {
+                console.error('Map init error:', e);
+                if (map) {
+                    map.remove();
+                    map = null;
+                }
+                setLoadingError('Karte konnte nicht geladen werden. Prüfe die Internetverbindung.');
             }
-
-            updateLoad(5, "Starte...");
-
-            // Fetch country data from open source REST Countries API
-            updateLoad(8, "Länderdaten (API)...");
-            await fetchCountriesFromAPI();
-
-            map = L.map('map', {
-                center: [25, 0], zoom: 2, minZoom: 2, maxZoom: 10,
-                worldCopyJump: true, zoomControl: false
-            });
-
-            updateLoad(15, "Basiskarte...");
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-                attribution: '©OSM ©CartoDB'
-            }).addTo(map);
-
-            updateLoad(30, "Länder laden...");
-            await loadCountries();
-
-            updateLoad(55, "Flüsse laden...");
-            await loadRivers();
-
-            updateLoad(80, "Gebirge laden...");
-            loadMountains();
-
-            updateLoad(100, "Fertig!");
-            setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 300);
         }
 
         function updateLoad(p, t) {
-            document.getElementById('loadingBar').style.width = p + '%';
-            document.getElementById('loadingStatus').textContent = t;
+            $('loadingBar').style.width = p + '%';
+            $('loadingStatus').textContent = t;
         }
 
         async function loadCountries() {
             try {
                 const res = await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson');
+                if (!res.ok) throw new Error('Country GeoJSON response: ' + res.status);
                 const data = await res.json();
                 countriesLayer = L.geoJSON(data, {
                     style: () => ({ fillColor: '#152238', weight: 1, opacity: 0.8, color: '#2a4a6a', fillOpacity: 0.65 }),
                     onEachFeature: (f, l) => l.on({ mouseover: hoverCountry, mouseout: outCountry, click: clickCountry })
                 }).addTo(map);
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                throw e;
+            }
         }
 
         async function loadRivers() {
@@ -452,10 +524,9 @@
             updateStats();
 
             document.getElementById('startBtn').textContent = '⏹️ Stop';
-            document.getElementById('startBtn').onclick = endQuiz;
             document.getElementById('hintBtn').disabled = false;
             document.getElementById('skipBtn').disabled = false;
-            document.getElementById('learnBtn').style.display = 'none';
+            setHidden($('learnBtn'), true);
             document.getElementById('modePanel').classList.add('collapsed');
             document.getElementById('collapseBtn').textContent = '▶';
 
@@ -468,6 +539,7 @@
 
         function nextQuestion() {
             if (qIndex >= totalQ) { endQuiz(); return; }
+            questionLocked = false;
             resetHighlights();
             hideHint(); hideMnemonic();
 
@@ -494,8 +566,8 @@
             const c = list[Math.floor(Math.random() * list.length)];
             used.push('c_'+c.name);
             currentQuestion = { type:'country', answer:c.name, code:c.code, hint:`Hauptstadt: ${c.capital}`, mnemonic:c.mnemonic, data:c };
-            document.getElementById('qMode').textContent = '🗺️ Länder';
-            document.getElementById('qText').innerHTML = `Klicke auf <span class="hl">${c.name}</span>!`;
+            $('qMode').textContent = '🗺️ Länder';
+            setQuestionText(['Klicke auf ', { text: c.name, className: 'hl' }, '!']);
             zoomRegion();
         }
 
@@ -506,8 +578,8 @@
             const c = list[Math.floor(Math.random() * list.length)];
             used.push('cap_'+c.capital);
             currentQuestion = { type:'capital', answer:c.name, code:c.code, hint:`Beginnt mit "${c.name[0]}"`, mnemonic:c.mnemonic, data:c };
-            document.getElementById('qMode').textContent = '🏛️ Hauptstädte';
-            document.getElementById('qText').innerHTML = `<span class="hl">${c.capital}</span> = Hauptstadt von?`;
+            $('qMode').textContent = '🏛️ Hauptstädte';
+            setQuestionText([{ text: c.capital, className: 'hl' }, ' = Hauptstadt von?']);
             zoomRegion();
         }
 
@@ -518,8 +590,8 @@
             const c = list[Math.floor(Math.random() * list.length)];
             used.push('f_'+c.flag);
             currentQuestion = { type:'flag', answer:c.name, code:c.code, hint:`Hauptstadt: ${c.capital}`, mnemonic:c.mnemonic, data:c };
-            document.getElementById('qMode').textContent = '🚩 Flaggen';
-            document.getElementById('qText').innerHTML = `Welches Land?<span class="flag-big">${c.flag}</span>`;
+            $('qMode').textContent = '🚩 Flaggen';
+            setQuestionText(['Welches Land?', { text: c.flag, className: 'flag-big' }]);
             zoomRegion();
         }
 
@@ -547,8 +619,8 @@
                 info: r.info
             };
 
-            document.getElementById('qMode').textContent = '🌊 Flüsse';
-            document.getElementById('qText').innerHTML = `Klicke auf den <span class="hl">${r.displayName}</span>!`;
+            $('qMode').textContent = '🌊 Flüsse';
+            setQuestionText(['Klicke auf den ', { text: r.displayName, className: 'hl' }, '!']);
 
             // Zoom to river
             try {
@@ -571,13 +643,15 @@
             mountainsLayer.eachLayer(l => { if (l.mtData && l.mtData.name === m.name) mtLayer = l; });
 
             currentQuestion = { type:'mountain', answer:m.name, hint:m.hint, mnemonic:m.mnemonic, layer:mtLayer, data:m };
-            document.getElementById('qMode').textContent = '⛰️ Gebirge';
-            document.getElementById('qText').innerHTML = `Klicke auf die <span class="hl">${m.name}</span>!`;
+            $('qMode').textContent = '⛰️ Gebirge';
+            setQuestionText(['Klicke auf die ', { text: m.name, className: 'hl' }, '!']);
 
             if (mtLayer) map.fitBounds(mtLayer.getBounds(), { padding: [50, 50], maxZoom: 5 });
         }
 
         function checkAnswer(isCorrect, layer, type, clickedName) {
+            if (questionLocked) return;
+            questionLocked = true;
             highlighted.push(layer);
 
             if (isCorrect) {
@@ -599,7 +673,7 @@
             }
 
             updateStats();
-            setTimeout(() => { qIndex++; nextQuestion(); }, isCorrect ? 2000 : 3000);
+            answerTimer = setTimeout(() => { qIndex++; nextQuestion(); }, isCorrect ? 2000 : 3000);
         }
 
         function applyStyle(layer, type, correct) {
@@ -656,7 +730,8 @@
         }
 
         function skipQuestion() {
-            if (!quizActive) return;
+            if (!quizActive || questionLocked) return;
+            questionLocked = true;
             streak = 0; wrong++;
             wrongAnswers.push({ q: currentQuestion, wrong: 'Übersprungen' });
             hideStreakBadge();
@@ -664,11 +739,16 @@
             showFeedback(false, `Skip → ${currentQuestion.answer}`);
             if (currentQuestion.mnemonic) showMnemonic(currentQuestion.mnemonic);
             updateStats();
-            setTimeout(() => { qIndex++; nextQuestion(); }, 2500);
+            answerTimer = setTimeout(() => { qIndex++; nextQuestion(); }, 2500);
         }
 
         function endQuiz() {
+            if (answerTimer) {
+                clearTimeout(answerTimer);
+                answerTimer = null;
+            }
             quizActive = false; currentQuestion = null;
+            questionLocked = false;
             const total = correct + wrong;
             const pct = total > 0 ? Math.round(correct/total*100) : 0;
 
@@ -686,14 +766,19 @@
             document.getElementById('resPoints').textContent = score;
 
             if (wrongAnswers.length > 0) {
-                document.getElementById('weakAreas').style.display = 'block';
-                document.getElementById('weakList').innerHTML = wrongAnswers.slice(0,5).map(w =>
-                    `<div class="weak-item">${w.q.answer}</div>`
-                ).join('');
-                document.getElementById('reviewBtn').style.display = 'block';
+                setHidden($('weakAreas'), false);
+                const weakList = $('weakList');
+                weakList.replaceChildren();
+                wrongAnswers.slice(0,5).forEach(w => {
+                    const item = document.createElement('div');
+                    item.className = 'weak-item';
+                    item.textContent = w.q.answer;
+                    weakList.append(item);
+                });
+                setHidden($('reviewBtn'), false);
             } else {
-                document.getElementById('weakAreas').style.display = 'none';
-                document.getElementById('reviewBtn').style.display = 'none';
+                setHidden($('weakAreas'), true);
+                setHidden($('reviewBtn'), true);
             }
 
             document.getElementById('popupOverlay').classList.add('show');
@@ -704,7 +789,7 @@
             document.getElementById('popupOverlay').classList.remove('show');
             resetHighlights();
             hideMnemonic();
-            document.getElementById('qText').innerHTML = 'Wähle Quiz oder Lernmodus!';
+            setQuestionText(['Wähle Quiz oder Lernmodus!']);
             document.getElementById('qBadge').textContent = 'Bereit';
             document.getElementById('qMode').textContent = '';
             document.getElementById('modePanel').classList.remove('collapsed');
@@ -727,7 +812,7 @@
             document.getElementById('qBadge').textContent = `Üben 1/${learnItems.length}`;
             document.getElementById('qMode').textContent = '📚 Wiederholen';
             document.getElementById('startBtn').textContent = '⏹️ Stop';
-            document.getElementById('startBtn').onclick = endLearn;
+            setHidden($('startBtn'), false);
 
             if (learnItems.length > 0) showLearnItem(0);
         }
@@ -755,12 +840,11 @@
             document.getElementById('modePanel').classList.add('collapsed');
             document.getElementById('qBadge').textContent = `Lernen 1/${learnItems.length}`;
             document.getElementById('qMode').textContent = '📚 Lernmodus';
-            document.getElementById('qText').innerHTML = 'Klicke auf Elemente oder nutze Navigation!';
+            setQuestionText(['Klicke auf Elemente oder nutze Navigation!']);
 
-            document.getElementById('learnBtn').style.display = 'none';
+            setHidden($('learnBtn'), true);
             document.getElementById('startBtn').textContent = '⏹️ Stop';
-            document.getElementById('startBtn').onclick = endLearn;
-            document.getElementById('startBtn').style.display = 'block';
+            setHidden($('startBtn'), false);
             document.getElementById('hintBtn').disabled = true;
             document.getElementById('skipBtn').disabled = true;
 
@@ -795,24 +879,28 @@
         function showRiverLearn(layer) {
             const info = layer.riverInfo;
             if (!info) return;
-            document.getElementById('infoTitle').innerHTML = `🌊 ${info.de}`;
+            document.getElementById('infoTitle').textContent = `🌊 ${info.de}`;
             document.getElementById('infoSubtitle').textContent = info.length;
-            document.getElementById('infoFacts').innerHTML = `
-                <div class="info-fact"><span class="info-fact-icon">📏</span>${info.length}</div>
-                <div class="info-fact"><span class="info-fact-icon">💡</span>${info.hint}</div>`;
+            setInfoFacts([
+                { icon: '📏', text: info.length },
+                { icon: '💡', text: info.hint }
+            ]);
             document.getElementById('infoMnemonicText').textContent = info.mnemonic;
+            syncLearnMnemonicVisibility();
             document.getElementById('infoCard').classList.add('show');
         }
 
         function showMountainLearn(layer) {
             const m = layer.mtData;
             if (!m) return;
-            document.getElementById('infoTitle').innerHTML = `⛰️ ${m.name}`;
+            document.getElementById('infoTitle').textContent = `⛰️ ${m.name}`;
             document.getElementById('infoSubtitle').textContent = m.peak;
-            document.getElementById('infoFacts').innerHTML = `
-                <div class="info-fact"><span class="info-fact-icon">🏔️</span>${m.peak}</div>
-                <div class="info-fact"><span class="info-fact-icon">💡</span>${m.hint}</div>`;
+            setInfoFacts([
+                { icon: '🏔️', text: m.peak },
+                { icon: '💡', text: m.hint }
+            ]);
             document.getElementById('infoMnemonicText').textContent = m.mnemonic;
+            syncLearnMnemonicVisibility();
             document.getElementById('infoCard').classList.add('show');
         }
 
@@ -831,11 +919,11 @@
         }
 
         function showCountryLearnDirect(c) {
-            document.getElementById('infoTitle').innerHTML = `${c.flag} ${c.name}`;
+            document.getElementById('infoTitle').textContent = `${c.flag} ${c.name}`;
             document.getElementById('infoSubtitle').textContent = `Hauptstadt: ${c.capital}`;
-            document.getElementById('infoFacts').innerHTML = `
-                <div class="info-fact"><span class="info-fact-icon">🏛️</span>${c.capital}</div>`;
+            setInfoFacts([{ icon: '🏛️', text: c.capital }]);
             document.getElementById('infoMnemonicText').textContent = c.mnemonic || 'Keine Merkhilfe.';
+            syncLearnMnemonicVisibility();
             document.getElementById('infoCard').classList.add('show');
         }
 
@@ -846,7 +934,7 @@
         function endLearn() {
             learnActive = false;
             document.getElementById('infoCard').classList.remove('show');
-            document.getElementById('qText').innerHTML = 'Wähle Quiz oder Lernmodus!';
+            setQuestionText(['Wähle Quiz oder Lernmodus!']);
             document.getElementById('qBadge').textContent = 'Bereit';
             document.getElementById('qMode').textContent = '';
             resetButtons();
@@ -883,7 +971,6 @@
 
         function resetButtons() {
             document.getElementById('startBtn').textContent = '🎯 Quiz';
-            document.getElementById('startBtn').onclick = startQuiz;
             document.getElementById('hintBtn').disabled = true;
             document.getElementById('skipBtn').disabled = true;
             updateTabUI();
@@ -893,21 +980,23 @@
             currentTab = tab;
             document.getElementById('tabQuiz').classList.toggle('active', tab === 'quiz');
             document.getElementById('tabLearn').classList.toggle('active', tab === 'learn');
-            document.getElementById('learnOptions').style.display = tab === 'learn' ? 'block' : 'none';
+            document.getElementById('tabQuiz').setAttribute('aria-selected', String(tab === 'quiz'));
+            document.getElementById('tabLearn').setAttribute('aria-selected', String(tab === 'learn'));
+            setHidden(document.getElementById('learnOptions'), tab !== 'learn');
             updateTabUI();
         }
 
         function updateTabUI() {
             if (currentTab === 'quiz') {
-                document.getElementById('startBtn').style.display = 'block';
-                document.getElementById('learnBtn').style.display = 'none';
-                document.getElementById('hintBtn').style.display = 'block';
-                document.getElementById('skipBtn').style.display = 'block';
+                setHidden(document.getElementById('startBtn'), false);
+                setHidden(document.getElementById('learnBtn'), true);
+                setHidden(document.getElementById('hintBtn'), false);
+                setHidden(document.getElementById('skipBtn'), false);
             } else {
-                document.getElementById('startBtn').style.display = 'none';
-                document.getElementById('learnBtn').style.display = 'block';
-                document.getElementById('hintBtn').style.display = 'none';
-                document.getElementById('skipBtn').style.display = 'none';
+                setHidden(document.getElementById('startBtn'), true);
+                setHidden(document.getElementById('learnBtn'), false);
+                setHidden(document.getElementById('hintBtn'), true);
+                setHidden(document.getElementById('skipBtn'), true);
             }
         }
 
@@ -915,6 +1004,7 @@
             const p = document.getElementById('modePanel');
             p.classList.toggle('collapsed');
             document.getElementById('collapseBtn').textContent = p.classList.contains('collapsed') ? '▶' : '▼';
+            document.getElementById('modeHeader').setAttribute('aria-expanded', String(!p.classList.contains('collapsed')));
         }
 
         function setMode(mode, btn) {
@@ -929,6 +1019,7 @@
         }
 
         function zoomRegion() {
+            if (!map) return;
             const v = {
                 world: [[25,0], 2], europe: [[54,15], 4], asia: [[35,90], 3],
                 africa: [[5,20], 3], northAmerica: [[45,-100], 3],
@@ -946,6 +1037,7 @@
             const btn = document.getElementById('toggleRivers');
             if (showRiversFlag) { map.addLayer(riversLayer); btn.classList.add('active'); }
             else { map.removeLayer(riversLayer); btn.classList.remove('active'); }
+            btn.setAttribute('aria-pressed', String(showRiversFlag));
         }
 
         function toggleMountains() {
@@ -954,15 +1046,90 @@
             const btn = document.getElementById('toggleMountains');
             if (showMountainsFlag) { map.addLayer(mountainsLayer); btn.classList.add('active'); }
             else { map.removeLayer(mountainsLayer); btn.classList.remove('active'); }
+            btn.setAttribute('aria-pressed', String(showMountainsFlag));
         }
 
-        document.addEventListener('DOMContentLoaded', initMap);
+        function initUI() {
+            $('retryLoadBtn').addEventListener('click', initMap);
+            $('optShowMnemonic').addEventListener('change', syncLearnMnemonicVisibility);
+            $('modeHeader').addEventListener('click', toggleModePanel);
+            $('regionSelect').addEventListener('change', e => setRegion(e.target.value));
+
+            document.querySelectorAll('[data-tab]').forEach(btn => {
+                btn.addEventListener('click', () => setTab(btn.dataset.tab));
+            });
+
+            document.querySelectorAll('[data-mode]').forEach(btn => {
+                btn.addEventListener('click', () => setMode(btn.dataset.mode, btn));
+            });
+
+            document.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    switch (btn.dataset.action) {
+                        case 'zoom-in':
+                            if (map) map.zoomIn();
+                            break;
+                        case 'zoom-out':
+                            if (map) map.zoomOut();
+                            break;
+                        case 'reset-view':
+                            resetView();
+                            break;
+                        case 'toggle-rivers':
+                            toggleRivers();
+                            break;
+                        case 'toggle-mountains':
+                            toggleMountains();
+                            break;
+                        case 'hint':
+                            useHint();
+                            break;
+                        case 'skip':
+                            skipQuestion();
+                            break;
+                        case 'start':
+                            if (quizActive) endQuiz();
+                            else if (learnActive) endLearn();
+                            else startQuiz();
+                            break;
+                        case 'learn':
+                            startLearn();
+                            break;
+                        case 'learn-prev':
+                            learnPrev();
+                            break;
+                        case 'learn-next':
+                            learnNext();
+                            break;
+                        case 'close-info':
+                            closeInfoCard();
+                            break;
+                        case 'close-popup':
+                            closePopup();
+                            break;
+                        case 'review':
+                            reviewWeak();
+                            break;
+                    }
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initUI();
+            initMap();
+        });
 
         document.addEventListener('keydown', function(e) {
             if (learnActive) {
                 if (e.key === 'ArrowRight') { learnNext(); e.preventDefault(); }
                 else if (e.key === 'ArrowLeft') { learnPrev(); e.preventDefault(); }
                 else if (e.key === 'Escape') { closeInfoCard(); e.preventDefault(); }
+            } else if (quizActive) {
+                if (e.key.toLowerCase() === 'h') { useHint(); e.preventDefault(); }
+                else if (e.key.toLowerCase() === 's') { skipQuestion(); e.preventDefault(); }
+            } else if (e.key === 'Escape') {
+                closePopup();
             }
         });
     

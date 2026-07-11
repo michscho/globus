@@ -9,13 +9,14 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
         <div class="loader"></div>
         <div class="loading-text">Karte wird geladen...</div>
         <div class="loading-sub" id="loadingStatus">Initialisierung...</div>
         <div class="loading-progress">
             <div class="loading-bar" id="loadingBar"></div>
         </div>
+        <button class="action-btn secondary loading-retry" id="retryLoadBtn" type="button">Erneut versuchen</button>
     </div>
 
     <div id="map"></div>
@@ -65,45 +66,45 @@
 
     <!-- Controls -->
     <div class="panel controls-panel">
-        <button class="ctrl-btn" onclick="map.zoomIn()" aria-label="Hineinzoomen">+</button>
-        <button class="ctrl-btn" onclick="map.zoomOut()" aria-label="Herauszoomen">−</button>
-        <button class="ctrl-btn" onclick="resetView()" aria-label="Ansicht zurücksetzen">🏠</button>
-        <button class="ctrl-btn active" id="toggleRivers" onclick="toggleRivers()" aria-label="Flüsse ein-/ausblenden">🌊</button>
-        <button class="ctrl-btn active" id="toggleMountains" onclick="toggleMountains()" aria-label="Gebirge ein-/ausblenden">⛰️</button>
+        <button class="ctrl-btn" data-action="zoom-in" type="button" aria-label="Hineinzoomen">+</button>
+        <button class="ctrl-btn" data-action="zoom-out" type="button" aria-label="Herauszoomen">−</button>
+        <button class="ctrl-btn" data-action="reset-view" type="button" aria-label="Ansicht zurücksetzen">🏠</button>
+        <button class="ctrl-btn active" id="toggleRivers" data-action="toggle-rivers" type="button" aria-label="Flüsse ein-/ausblenden" aria-pressed="true">🌊</button>
+        <button class="ctrl-btn active" id="toggleMountains" data-action="toggle-mountains" type="button" aria-label="Gebirge ein-/ausblenden" aria-pressed="true">⛰️</button>
     </div>
 
     <!-- Mode Panel -->
     <div class="panel mode-panel" id="modePanel">
-        <div class="mode-header" onclick="toggleModePanel()">
+        <button class="mode-header" id="modeHeader" type="button" aria-expanded="true">
             <h3>🎮 Einstellungen</h3>
-            <button class="collapse-btn" id="collapseBtn">▼</button>
-        </div>
+            <span class="collapse-btn" id="collapseBtn" aria-hidden="true">▼</span>
+        </button>
         <div class="mode-body">
-            <div class="mode-tabs">
-                <button class="mode-tab active" id="tabQuiz" onclick="setTab('quiz')">🎯 Quiz</button>
-                <button class="mode-tab" id="tabLearn" onclick="setTab('learn')">📚 Lernen</button>
+            <div class="mode-tabs" role="tablist" aria-label="Modus">
+                <button class="mode-tab active" id="tabQuiz" data-tab="quiz" type="button" role="tab" aria-selected="true">🎯 Quiz</button>
+                <button class="mode-tab" id="tabLearn" data-tab="learn" type="button" role="tab" aria-selected="false">📚 Lernen</button>
             </div>
             <div class="mode-grid">
-                <button class="mode-btn active" onclick="setMode('countries', this)">
+                <button class="mode-btn active" data-mode="countries" type="button">
                     <div class="icon">🗺️</div><div class="label">Länder</div>
                 </button>
-                <button class="mode-btn" onclick="setMode('capitals', this)">
+                <button class="mode-btn" data-mode="capitals" type="button">
                     <div class="icon">🏛️</div><div class="label">Hauptstädte</div>
                 </button>
-                <button class="mode-btn" onclick="setMode('flags', this)">
+                <button class="mode-btn" data-mode="flags" type="button">
                     <div class="icon">🚩</div><div class="label">Flaggen</div>
                 </button>
-                <button class="mode-btn" onclick="setMode('rivers', this)">
+                <button class="mode-btn" data-mode="rivers" type="button">
                     <div class="icon">🌊</div><div class="label">Flüsse</div>
                 </button>
-                <button class="mode-btn" onclick="setMode('mountains', this)">
+                <button class="mode-btn" data-mode="mountains" type="button">
                     <div class="icon">⛰️</div><div class="label">Gebirge</div>
                 </button>
-                <button class="mode-btn" onclick="setMode('mixed', this)">
+                <button class="mode-btn" data-mode="mixed" type="button">
                     <div class="icon">🎲</div><div class="label">Gemischt</div>
                 </button>
             </div>
-            <select class="region-select" id="regionSelect" onchange="setRegion(this.value)">
+            <select class="region-select" id="regionSelect">
                 <option value="world">🌍 Ganze Welt</option>
                 <option value="europe">🇪🇺 Europa</option>
                 <option value="asia">🌏 Asien</option>
@@ -112,7 +113,7 @@
                 <option value="southAmerica">🌎 Südamerika</option>
                 <option value="oceania">🏝️ Ozeanien</option>
             </select>
-            <div class="learn-options" id="learnOptions" style="display:none;">
+            <div class="learn-options hidden" id="learnOptions">
                 <label class="learn-option">
                     <input type="checkbox" id="optShowMnemonic" checked> Merkhilfen anzeigen
                 </label>
@@ -122,10 +123,10 @@
 
     <!-- Actions -->
     <div class="panel action-panel">
-        <button class="action-btn secondary" onclick="useHint()" id="hintBtn" disabled>💡 Tipp</button>
-        <button class="action-btn secondary" onclick="skipQuestion()" id="skipBtn" disabled>⏭️ Skip</button>
-        <button class="action-btn primary" onclick="startQuiz()" id="startBtn">🎯 Quiz</button>
-        <button class="action-btn learn" onclick="startLearn()" id="learnBtn" style="display:none;">📚 Lernen</button>
+        <button class="action-btn secondary" data-action="hint" id="hintBtn" type="button" disabled>💡 Tipp</button>
+        <button class="action-btn secondary" data-action="skip" id="skipBtn" type="button" disabled>⏭️ Skip</button>
+        <button class="action-btn primary" data-action="start" id="startBtn" type="button">🎯 Quiz</button>
+        <button class="action-btn learn hidden" data-action="learn" id="learnBtn" type="button">📚 Lernen</button>
     </div>
 
     <!-- Info Card -->
@@ -138,20 +139,20 @@
             <div class="info-mnemonic-text" id="infoMnemonicText"></div>
         </div>
         <div class="info-card-nav">
-            <button class="info-nav-prev" onclick="learnPrev()" aria-label="Vorheriges Element">←</button>
-            <button class="info-nav-close" onclick="closeInfoCard()" aria-label="Schließen">OK ✓</button>
-            <button class="info-nav-next" onclick="learnNext()" aria-label="Nächstes Element">→</button>
+            <button class="info-nav-prev" data-action="learn-prev" type="button" aria-label="Vorheriges Element">←</button>
+            <button class="info-nav-close" data-action="close-info" type="button" aria-label="Schließen">OK ✓</button>
+            <button class="info-nav-next" data-action="learn-next" type="button" aria-label="Nächstes Element">→</button>
         </div>
     </div>
 
     <!-- Feedback -->
-    <div class="feedback-toast" id="feedbackToast"></div>
+    <div class="feedback-toast" id="feedbackToast" role="status" aria-live="polite"></div>
     <div class="streak-badge" id="streakBadge">🔥 <span id="streakNum">0</span>x</div>
 
     <!-- Result Popup -->
-    <div class="popup-overlay" id="popupOverlay">
+    <div class="popup-overlay" id="popupOverlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
         <div class="result-popup">
-            <h2>Quiz beendet!</h2>
+            <h2 id="resultTitle">Quiz beendet!</h2>
             <div class="emoji" id="resEmoji">🎉</div>
             <div class="big-score" id="resScore">0%</div>
             <div class="msg" id="resMsg">Gut gemacht!</div>
@@ -160,12 +161,12 @@
                 <div class="bd-item"><div class="bd-val" id="resWrong">0</div><div class="bd-lbl">Falsch</div></div>
                 <div class="bd-item"><div class="bd-val" id="resPoints">0</div><div class="bd-lbl">Punkte</div></div>
             </div>
-            <div class="weak-areas" id="weakAreas" style="display:none;">
+            <div class="weak-areas hidden" id="weakAreas">
                 <div class="weak-title">📝 Wiederholen:</div>
                 <div id="weakList"></div>
             </div>
-            <button class="action-btn primary" onclick="closePopup()" style="width:100%; margin-top:12px;">🔄 Nochmal</button>
-            <button class="action-btn learn" onclick="reviewWeak()" id="reviewBtn" style="width:100%; margin-top:6px; display:none;">📚 Üben</button>
+            <button class="action-btn primary result-action" data-action="close-popup" type="button">🔄 Nochmal</button>
+            <button class="action-btn learn result-action result-review hidden" data-action="review" id="reviewBtn" type="button">📚 Üben</button>
         </div>
     </div>
 

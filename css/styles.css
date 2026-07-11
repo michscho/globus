@@ -13,6 +13,20 @@
             overflow: hidden;
         }
 
+        .hidden {
+            display: none !important;
+        }
+
+        button, select {
+            font: inherit;
+        }
+
+        button:focus-visible,
+        select:focus-visible {
+            outline: 2px solid #00d4ff;
+            outline-offset: 3px;
+        }
+
         #map {
             width: 100vw;
             height: 100vh;
@@ -245,6 +259,10 @@
         .mode-panel.collapsed .mode-body { display: none; }
 
         .mode-header {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: inherit;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -264,12 +282,13 @@
         .collapse-btn {
             width: 22px;
             height: 22px;
-            border: none;
             background: rgba(255,255,255,0.06);
             border-radius: 5px;
             color: #6a7a9a;
-            cursor: pointer;
             font-size: 0.7em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .mode-tabs {
@@ -419,6 +438,15 @@
             opacity: 0.35;
             cursor: not-allowed;
             transform: none !important;
+        }
+
+        .result-action {
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .result-review {
+            margin-top: 6px;
         }
 
         /* Info Card - FIXED positioning */
@@ -705,6 +733,19 @@
             transition: width 0.2s;
         }
 
+        .loading-retry {
+            display: none;
+            margin-top: 18px;
+        }
+
+        .loading-overlay.load-error .loader {
+            display: none;
+        }
+
+        .loading-overlay.load-error .loading-retry {
+            display: inline-flex;
+        }
+
         /* Leaflet */
         .leaflet-container { background: #080810; }
 
@@ -982,5 +1023,14 @@
         @supports (height: 100dvh) {
             body { min-height: 100dvh; }
             #map { height: 100dvh; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     
